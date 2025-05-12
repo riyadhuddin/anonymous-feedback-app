@@ -1,0 +1,36 @@
+type User @model @auth(rules: [
+  { allow: owner, operations: [create, read, update, delete] },
+  { allow: public, operations: [read] }
+]) {
+  id: ID!
+  username: String! @index(name: "byUsername", queryField: "getUserByUsername")
+  email: String! @auth(rules: [{ allow: owner }])
+  bio: String
+  createdAt: AWSDateTime
+  updatedAt: AWSDateTime
+  feedbacks: [Feedback] @hasMany(indexName: "byUser", fields: ["id"])
+}
+
+type Feedback @model @auth(rules: [
+  { allow: owner, ownerField: "userId", operations: [read, update, delete] },
+  { allow: public, operations: [create] }
+]) {
+  id: ID!
+  userId: ID! @index(name: "byUser", sortKeyFields: ["createdAt"])
+  message: String!
+  tags: [String]
+  reply: String
+  createdAt: AWSDateTime!
+  updatedAt: AWSDateTime
+}
+
+# Define a Lambda function for rate limiting and moderation
+type Query {
+  moderateFeedback(message: String!): ModeratedResult @function(name: "moderateFeedbackFunction")
+}
+
+type ModeratedResult {
+  isApproved: Boolean!
+  moderatedMessage: String
+  reason: String
+}
